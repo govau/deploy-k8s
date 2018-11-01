@@ -1,0 +1,167 @@
+apiVersion: kops/v1alpha2
+kind: Cluster
+metadata:
+  name: {{.clusterName}}
+spec:
+  api:
+    loadBalancer:
+      type: Public
+  authorization:
+    rbac: {}
+  channel: stable
+  cloudProvider: aws
+  configBase: {{.kopsStateStore}}/{{.clusterName}}
+  dnsZone: {{.dnsZone}}
+  etcdClusters:
+  - etcdMembers:
+    - encryptedVolume: true
+      instanceGroup: master-ap-southeast-2a
+      name: a
+    - encryptedVolume: true
+      instanceGroup: master-ap-southeast-2b
+      name: b
+    - encryptedVolume: true
+      instanceGroup: master-ap-southeast-2c
+      name: c
+    name: main
+  - etcdMembers:
+    - encryptedVolume: true
+      instanceGroup: master-ap-southeast-2a
+      name: a
+    - encryptedVolume: true
+      instanceGroup: master-ap-southeast-2b
+      name: b
+    - encryptedVolume: true
+      instanceGroup: master-ap-southeast-2c
+      name: c
+    name: events
+  iam:
+    allowContainerRegistry: false
+    legacy: false
+  kubernetesApiAccess:
+  - 0.0.0.0/0
+  kubernetesVersion: 1.10.6
+  masterPublicName: api.{{.clusterName}}
+  networkCIDR: {{.vpcCidr}}
+  networkID: {{.vpcId}}
+  networking:
+    kopeio: {}
+  nonMasqueradeCIDR: 100.64.0.0/10
+  sshAccess:
+  - 0.0.0.0/0
+  subnets:
+  - cidr: {{.privateSubnetCidrA}}
+    # FIXME Currently using our existing NAT Gateways with 'egress' doesnt work,
+    # as kops does not correctly add the VPC endpoint for S3 into the subnets it creates.
+    egress: {{.natGatewayA}}
+    name: ap-southeast-2a
+    type: Private
+    zone: ap-southeast-2a
+  - cidr: {{.privateSubnetCidrB}}
+    egress: {{.natGatewayB}}
+    name: ap-southeast-2b
+    type: Private
+    zone: ap-southeast-2b
+  - cidr: {{.privateSubnetCidrC}}
+    egress: {{.natGatewayC}}
+    name: ap-southeast-2c
+    type: Private
+    zone: ap-southeast-2c
+  - cidr: {{.utilitySubnetCidrA}}
+    name: utility-ap-southeast-2a
+    type: Utility
+    zone: ap-southeast-2a
+  - cidr: {{.utilitySubnetCidrB}}
+    name: utility-ap-southeast-2b
+    type: Utility
+    zone: ap-southeast-2b
+  - cidr: {{.utilitySubnetCidrC}}
+    name: utility-ap-southeast-2c
+    type: Utility
+    zone: ap-southeast-2c
+  topology:
+    dns:
+      type: Private
+    masters: private
+    nodes: private
+
+---
+
+apiVersion: kops/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: 2018-10-24T00:31:34Z
+  labels:
+    kops.k8s.io/cluster: {{.clusterName}}
+  name: master-ap-southeast-2a
+spec:
+  image: kope.io/k8s-1.10-debian-jessie-amd64-hvm-ebs-2018-08-17
+  machineType: t2.medium
+  maxSize: 1
+  minSize: 1
+  nodeLabels:
+    kops.k8s.io/instancegroup: master-ap-southeast-2a
+  role: Master
+  subnets:
+  - ap-southeast-2a
+
+---
+
+apiVersion: kops/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: 2018-10-24T00:31:34Z
+  labels:
+    kops.k8s.io/cluster: {{.clusterName}}
+  name: master-ap-southeast-2b
+spec:
+  image: kope.io/k8s-1.10-debian-jessie-amd64-hvm-ebs-2018-08-17
+  machineType: t2.medium
+  maxSize: 1
+  minSize: 1
+  nodeLabels:
+    kops.k8s.io/instancegroup: master-ap-southeast-2b
+  role: Master
+  subnets:
+  - ap-southeast-2b
+
+---
+
+apiVersion: kops/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: 2018-10-24T00:31:34Z
+  labels:
+    kops.k8s.io/cluster: {{.clusterName}}
+  name: master-ap-southeast-2c
+spec:
+  image: kope.io/k8s-1.10-debian-jessie-amd64-hvm-ebs-2018-08-17
+  machineType: t2.medium
+  maxSize: 1
+  minSize: 1
+  nodeLabels:
+    kops.k8s.io/instancegroup: master-ap-southeast-2c
+  role: Master
+  subnets:
+  - ap-southeast-2c
+
+---
+
+apiVersion: kops/v1alpha2
+kind: InstanceGroup
+metadata:
+  creationTimestamp: 2018-10-24T00:31:35Z
+  labels:
+    kops.k8s.io/cluster: {{.clusterName}}
+  name: nodes
+spec:
+  image: kope.io/k8s-1.10-debian-jessie-amd64-hvm-ebs-2018-08-17
+  machineType: t2.medium
+  maxSize: 2
+  minSize: 2
+  nodeLabels:
+    kops.k8s.io/instancegroup: nodes
+  role: Node
+  subnets:
+  - ap-southeast-2a
+  - ap-southeast-2b

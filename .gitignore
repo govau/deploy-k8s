@@ -1,0 +1,6 @@
+crash.log
+.envrc
+.kube/**/config
+secret*
+playbook.retry
+deploy-key*

@@ -1,0 +1,43 @@
+---
+# Ansible playbook for deploying kubernetes using kops through a jumpbox
+
+- hosts: all
+  vars:
+    kops_dir: /home/ec2-user/kops
+    kops_dl_url: https://github.com/kubernetes/kops/releases/download/1.10.0/kops-linux-amd64
+    kops_dl_checksum: sha256:ccc64c44daa9ee6d4a63bc27f42135983527a37b98edca953488444a46797d9f
+    kubectl_dl_url: https://storage.googleapis.com/kubernetes-release/release/v1.12.1/bin/linux/amd64/kubectl
+    kubectl_dl_checksum: sha256:abba8834d6bce74cacf4edcdf73b30075f89545ec3ca5a0594061e6cebe13975
+    sdget_dl_url: https://github.com/govau/sdget/releases/download/v0.4.0/sdget
+    sdget_dl_checksum: sha256:a49ec275d172682074e9bc137127e4e6554034ab6bf8b77b46c3397388c25663
+  remote_user: ec2-user
+  become_user: root
+  become_method: sudo
+  tasks:
+    - name: Yum security updates
+      yum:
+        name: "*"
+        state: latest
+      become: true
+    - name: Download sdget
+      get_url:
+        url: "{{ sdget_dl_url }}"
+        checksum: "{{ sdget_dl_checksum }}"
+        dest: /tmp/sdget
+    - name: Install sdget
+      copy:
+        src: /tmp/sdget
+        dest: /usr/local/bin
+        remote_src: true
+        owner: root
+        group: root
+        mode: 0755
+      become: true
+
+    # Only run the kops task if the kops config in DNS is present in this env
+
+    - name: Check for kops.cld.internal in dns
+      shell: dig +short kops.cld.internal any
+      register: kops_cld_internal
+    - include_tasks: tasks/kops.yml
+      when: kops_cld_internal.stdout != ""

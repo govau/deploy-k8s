@@ -1,0 +1,73 @@
+
+- name: Download kops
+  get_url:
+    url: "{{ kops_dl_url }}"
+    checksum: "{{ kops_dl_checksum }}"
+    dest: /tmp/kops
+- name: Install kops
+  copy:
+      src: /tmp/kops
+      dest: /usr/local/bin
+      remote_src: true
+      owner: root
+      group: root
+      mode: 0755
+  become: true
+- name: Download kubectl
+  get_url:
+    url: "{{ kubectl_dl_url }}"
+    checksum: "{{ kubectl_dl_checksum }}"
+    dest: /tmp/kubectl
+- name: Install kubectl
+  copy:
+      src: /tmp/kubectl
+      dest: /usr/local/bin
+      remote_src: true
+      owner: root
+      group: root
+      mode: 0755
+  become: true
+- name: Install kubectl autocomplete
+  shell: |
+    set -eu
+    echo "source <(kubectl completion bash)" >> /etc/bash_completion.d/kubectl
+  args:
+    executable: /bin/bash
+    creates: /etc/bash_completion.d/kubectl
+  become: true
+- name: Make kops deployment directory
+  file:
+      path: "{{ kops_dir }}"
+      state: directory
+      mode: 0700
+- name: Make kops bin directory
+  file:
+      path: "{{ kops_dir }}/bin"
+      state: directory
+      mode: 0700
+- name: Install kops deployment script
+  copy:
+      src: files/deploy.sh
+      dest: "{{ kops_dir }}/bin/deploy.sh"
+      mode: 0755
+- name: Install kops cluster template
+  copy:
+      src: files/cluster.template.yml
+      dest: "{{ kops_dir }}/cluster.template.yml"
+      # mode: 0644
+- name: Generate kops ssh key
+  command: ssh-keygen -t rsa -b 4096 -f {{ kops_dir }}/k8s-key -N ""
+  args:
+    creates: "{{ kops_dir }}/k8s-key"
+
+# TODO save the keys somewhere like s3
+
+- name: Get kops state store bucket from dns
+  command: sdget kops.cld.internal state-store
+  register: kops_state_store
+- name: Set KOPS_STATE_STORE environment variable in profile
+  shell: echo "export KOPS_STATE_STORE={{kops_state_store.stdout}}" > /etc/profile.d/kops_state_store.sh
+  become: true
+
+# We now expect someone to run kops/bin/deploy.sh on the jumpbox. It's better
+# we do this outside of ansible so we can see the output as it's running.
