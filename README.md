@@ -8,6 +8,12 @@ Our kubernetes is deployed with [kops](https://github.com/kubernetes/kops).
 
 ### AWS access
 
+#### Inside AWS
+
+The jumpbox in each environment (x.cld.gov.au) has an EC2 IAM profile which allows us to run kops on the jumpbox.
+
+#### Outside of AWS
+
 kops needs AWS access. Our recommended way is to use aws profiles configured in ~/.aws files, for example:
 
 AWS_PROFILE=k-cld
@@ -26,20 +32,6 @@ role_arn = arn:aws:iam::123456789012:role/the-role
 ```
 
 To use this `k-cld` profile, you would need to run `export AWS_PROFILE=k-cld` before running kops/aws comands. Additionally, kops uses the Go AWS SDK, which [needs the environment variable](https://docs.aws.amazon.com/sdk-for-go/api/aws/session/#hdr-Sessions_from_Shared_Config) `AWS_SDK_LOAD_CONFIG` set to read from this configuration file.
-
-### Terraform secrets
-
-There are two files in each env which must be added before terraform will work:
-- `terraform/env/secret-backend.cfg`
-- `terraform/env/secret.auto.tfvars`
-
-See the samples for each as to how to configure them.
-
-You will need to specify the backend config when running  terraform init. e.g.
-```
-cd terraform/env/k-cld
-terraform init -backend-config=../secret-backend.cfg
-```
 
 ## Dockerfile quick start
 
@@ -103,7 +95,7 @@ kops delete cluster --name foo.k.cld.gov.au --yes
 If you want to run `kops create cluster` and make that the new cluster template, or even create your own cluster from scratch without using the template, the rough steps are:
 
 ```
-KOPS_CLUSTER_NAME=newcluster.k.cld.gov.au
+export KOPS_CLUSTER_NAME=newcluster.k.cld.gov.au
 
 kops create cluster \
     --master-count 3 \
@@ -115,7 +107,7 @@ kops create cluster \
     --topology private \
     --networking kopeio-vxlan \
     --encrypt-etcd-storage \
-    --ssh-public-key ./terraform/env/k-cld/k-cld-k8s-key.pub \
+    --ssh-public-key ./somekey.pub \
     --yes
 
 # Maybe edit the cluster in $EDITOR if you want
@@ -125,4 +117,17 @@ kops edit cluster
 kops get -o yaml > ${KOPS_CLUSTER_NAME}.yml
 
 # You can then diff this file against `cluster.template.yml` and make changes
+```
+
+## Deploying with ansible
+
+Run the deployment playbook:
+
+```bash
+ENV_NAME=k
+
+cd ${PATH_TO_REPOS}/deploy-k8s/installer
+
+ansible-playbook -i bosh-jumpbox.${ENV_NAME}.cld.gov.au:32213, playbook.yml
+ssh ec2-user@bosh-jumpbox.${ENV_NAME}.cld.gov.au kops/bin/deploy.sh
 ```

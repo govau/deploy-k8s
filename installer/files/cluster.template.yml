@@ -1,8 +1,12 @@
 apiVersion: kops/v1alpha2
 kind: Cluster
 metadata:
-  name: "{{.clusterName}}"
+  name: {{.clusterName}}
 spec:
+  additionalPolicies:
+    master:
+
+
   api:
     loadBalancer:
       type: Public
@@ -11,6 +15,7 @@ spec:
   channel: stable
   cloudProvider: aws
   configBase: {{.kopsStateStore}}/{{.clusterName}}
+  dnsZone: {{.dnsZone}}
   etcdClusters:
   - etcdMembers:
     - encryptedVolume: true
@@ -35,51 +40,53 @@ spec:
       name: c
     name: events
   iam:
-    allowContainerRegistry: true
+    allowContainerRegistry: false
     legacy: false
   kubernetesApiAccess:
   - 0.0.0.0/0
   kubernetesVersion: 1.10.6
   masterPublicName: api.{{.clusterName}}
-  networkCIDR: 172.20.0.0/16
+  networkCIDR: {{.vpcCidr}}
+  networkID: {{.vpcId}}
   networking:
     kopeio: {}
   nonMasqueradeCIDR: 100.64.0.0/10
   sshAccess:
   - 0.0.0.0/0
   subnets:
-  - cidr: 172.20.32.0/19
+  - cidr: {{.privateSubnetCidrA}}
+    egress: {{.natGatewayA}}
     name: ap-southeast-2a
     type: Private
     zone: ap-southeast-2a
-  - cidr: 172.20.64.0/19
+  - cidr: {{.privateSubnetCidrB}}
+    egress: {{.natGatewayB}}
     name: ap-southeast-2b
     type: Private
     zone: ap-southeast-2b
-  - cidr: 172.20.96.0/19
+  - cidr: {{.privateSubnetCidrC}}
+    egress: {{.natGatewayC}}
     name: ap-southeast-2c
     type: Private
     zone: ap-southeast-2c
-  - cidr: 172.20.0.0/22
+  - cidr: {{.utilitySubnetCidrA}}
     name: utility-ap-southeast-2a
     type: Utility
     zone: ap-southeast-2a
-  - cidr: 172.20.4.0/22
+  - cidr: {{.utilitySubnetCidrB}}
     name: utility-ap-southeast-2b
     type: Utility
     zone: ap-southeast-2b
-  - cidr: 172.20.8.0/22
+  - cidr: {{.utilitySubnetCidrC}}
     name: utility-ap-southeast-2c
     type: Utility
     zone: ap-southeast-2c
   topology:
-    bastion:
-      bastionPublicName: bastion.{{.clusterName}}
     dns:
-      type: Public
+      type: Private
     masters: private
     nodes: private
-  
+
 ---
 
 apiVersion: kops/v1alpha2

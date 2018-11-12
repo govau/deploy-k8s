@@ -1,0 +1,104 @@
+---
+# Ansible playbook for deploying kubernetes using kops through a jumpbox
+
+- hosts: all
+  vars:
+    kops_dir: /home/ec2-user/kops
+    kops_dl_url: https://github.com/kubernetes/kops/releases/download/1.10.0/kops-linux-amd64
+    kops_dl_checksum: sha256:ccc64c44daa9ee6d4a63bc27f42135983527a37b98edca953488444a46797d9f
+    kubectl_dl_url: https://storage.googleapis.com/kubernetes-release/release/v1.12.1/bin/linux/amd64/kubectl
+    kubectl_dl_checksum: sha256:abba8834d6bce74cacf4edcdf73b30075f89545ec3ca5a0594061e6cebe13975
+    sdget_dl_url: https://github.com/govau/sdget/releases/download/v0.4.0/sdget
+    sdget_dl_checksum: sha256:a49ec275d172682074e9bc137127e4e6554034ab6bf8b77b46c3397388c25663
+  remote_user: ec2-user
+  become_user: root
+  become_method: sudo
+  tasks:
+    - name: Yum security updates
+      yum:
+          name: "*"
+          state: latest
+      become: true
+    - name: Download sdget
+      get_url:
+          url: "{{ sdget_dl_url }}"
+          checksum: "{{ sdget_dl_checksum }}"
+          dest: /tmp/sdget
+    - name: Install sdget
+      copy:
+          src: /tmp/sdget
+          dest: /usr/local/bin
+          remote_src: true
+          owner: root
+          group: root
+          mode: 0755
+      become: true
+    - name: Download kops
+      get_url:
+        url: "{{ kops_dl_url }}"
+        checksum: "{{ kops_dl_checksum }}"
+        dest: /tmp/kops
+    - name: Install kops
+      copy:
+          src: /tmp/kops
+          dest: /usr/local/bin
+          remote_src: true
+          owner: root
+          group: root
+          mode: 0755
+      become: true
+    - name: Download kubectl
+      get_url:
+        url: "{{ kubectl_dl_url }}"
+        checksum: "{{ kubectl_dl_checksum }}"
+        dest: /tmp/kubectl
+    - name: Install kubectl
+      copy:
+          src: /tmp/kubectl
+          dest: /usr/local/bin
+          remote_src: true
+          owner: root
+          group: root
+          mode: 0755
+      become: true
+    - name: Install kubectl autocomplete
+      shell: |
+        set -eu
+        echo "source <(kubectl completion bash)" >> /etc/bash_completion.d/kubectl
+      args:
+        executable: /bin/bash
+        creates: /etc/bash_completion.d/kubectl
+      become: true
+    - name: Make kops deployment directory
+      file:
+          path: "{{ kops_dir }}"
+          state: directory
+          mode: 0700
+    - name: Make kops bin directory
+      file:
+          path: "{{ kops_dir }}/bin"
+          state: directory
+          mode: 0700
+    - name: Install kops deployment script
+      copy:
+          src: files/deploy.sh
+          dest: "{{ kops_dir }}/bin/deploy.sh"
+          mode: 0755
+    - name: Install kops cluster template
+      copy:
+          src: files/cluster.template.yml
+          dest: "{{ kops_dir }}/cluster.template.yml"
+          # mode: 0644
+    - name: Generate kops ssh key
+      command: ssh-keygen -t rsa -b 4096 -f {{ kops_dir }}/k8s-key -N ""
+      args:
+        creates: "{{ kops_dir }}/k8s-key"
+
+    # TODO save the keys somewhere like s3
+
+    - name: Get kops state store bucket from dns
+      command: sdget kops.cld.internal state-store
+      register: kops_state_store
+    - name: Set KOPS_STATE_STORE environment variable in profile
+      shell: echo "export KOPS_STATE_STORE={{kops_state_store.stdout}}" > /etc/profile.d/kops_state_store.sh
+      become: true
