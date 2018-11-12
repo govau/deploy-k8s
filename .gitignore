@@ -1,8 +1,5 @@
-.terraform
-*.tfstate
-*.tfstate.*
 crash.log
 .envrc
 .kube/**/config
-*-cld-k8s-key
 secret*
+playbook.retry
