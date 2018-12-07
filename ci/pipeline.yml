@@ -20,3 +20,16 @@ jobs:
         JUMPBOX_SSH_PORT: {{jumpbox_ssh_port}}
         JUMPBOX_SSH_KEY: {{jumpbox_ssh_key}}
         SSH_CA: {{ssh_ca}}
+- name: deploy-g
+  plan:
+  - do:
+    - aggregate:
+      - get: deploy-kops.git
+        trigger: true
+    - task: deploy
+      file: deploy-kops.git/ci/tasks/deploy.yml
+      params:
+        ENV_NAME: g
+        JUMPBOX_SSH_PORT: {{jumpbox_ssh_port}}
+        JUMPBOX_SSH_KEY: {{jumpbox_ssh_key}}
+        SSH_CA: {{ssh_ca}}
