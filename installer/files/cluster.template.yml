@@ -51,8 +51,6 @@ spec:
   - 0.0.0.0/0
   subnets:
   - cidr: {{.privateSubnetCidrA}}
-    # FIXME Currently using our existing NAT Gateways with 'egress' doesnt work,
-    # as kops does not correctly add the VPC endpoint for S3 into the subnets it creates.
     egress: {{.natGatewayA}}
     name: ap-southeast-2a
     type: Private

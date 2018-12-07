@@ -51,6 +51,10 @@ ansible-playbook -i bosh-jumpbox.${ENV_NAME}.cld.gov.au, playbook.yml
 ssh bosh-jumpbox.$ENV_NAME.cld.gov.au kops/bin/deploy.sh
 ```
 
+### Using existing VPC and NAT gateways
+
+We are using the existing VPC and NAT Gateways in each environment by specifying 'egress' in each subnet in the cluster template. There is an issue doing this where the route tables created by kops do not have an association with the vpc s3 endpoint. When deploying kops for the first time, this association must be added outside of kops, before kops will finish successfully. This is done in the environment's terraform, however it must be applied after kops has created the subnets.
+
 ## Dockerfile quick start
 
 You can use the included `Dockerfile` and `rundocker.sh` to quickly get a terminal running with kops and other useful things, and with the necessary environment variables.
