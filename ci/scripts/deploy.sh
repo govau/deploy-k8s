@@ -24,7 +24,10 @@ chmod 600 ${PATH_TO_KEY}
 
 cd "${PATH_TO_DEPLOY_KOPS}/installer"
 
-ansible-playbook --private-key=${PATH_TO_KEY} -i ${JUMPBOX}:${JUMPBOX_SSH_PORT}, playbook.yml
+ansible-playbook \
+  --private-key=${PATH_TO_KEY} \
+  --ssh-common-args="-oBatchMode=yes" \
+  -i ${JUMPBOX}:${JUMPBOX_SSH_PORT}, playbook.yml
 
-ssh -i ${PATH_TO_KEY} -p ${JUMPBOX_SSH_PORT} ec2-user@${JUMPBOX} \
+ssh -oBatchMode=yes -i ${PATH_TO_KEY} -p ${JUMPBOX_SSH_PORT} ec2-user@${JUMPBOX} \
   "[[ -d kops ]] && kops/bin/deploy.sh"
